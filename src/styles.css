@@ -1,0 +1,77 @@
+/* Public visual tokens are opt-in; package surfaces also have isolated defaults. */
+.demoable-react-theme { --demoable-react-accent: #7256d8; --demoable-react-surface: #f5f2ff; --demoable-react-ink: #252034; }
+.demoable-react-layer { --demoable-react-accent: #7256d8; --demoable-react-surface-rgb: 250 248 255; --demoable-react-ink: #252034; position: fixed; inset: 0; z-index: var(--demoable-react-z-index, 2147483000); pointer-events: none; font: 14px/1.5 system-ui, sans-serif; color: var(--demoable-react-ink); }
+.demoable-react-layer *, .demoable-react-layer *::before, .demoable-react-layer *::after { box-sizing: border-box; }
+.demoable-react-layer button { font: inherit; color: var(--demoable-react-ink); background: #fff; border: 1px solid #b6a9d1; border-radius: 7px; padding: 5px 9px; cursor: pointer; }
+.demoable-react-layer :is(button,input,a):focus-visible { outline: 3px solid #4f2ba3; outline-offset: 3px; }
+.demoable-react-hint { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px); padding: 10px 16px; border-radius: 999px; background: #252034; color: white; text-align: center; pointer-events: none; opacity: 1; transition: opacity 1s linear; box-shadow: 0 5px 25px #25203422; }
+.demoable-react-hint[data-phase=fading] { opacity: 0; }
+.demoable-react-gear { box-sizing: border-box; width: 32px; height: 32px; flex: 0 0 auto; border: 1px solid #c8bfd8; border-radius: 50%; padding: 0; font: 23px/1 system-ui,sans-serif; color: #432a77; background: #faf8ff; cursor: pointer; }
+
+.demoable-react-settings { position: fixed; display: grid; gap: 12px; width: min(280px, 100vw); max-height: calc(100vh - min(16px, 50vh)); max-width: calc(100vw - min(16px, 50vw)); overflow: auto; background: rgb(var(--demoable-react-surface-rgb) / var(--demoable-react-background-opacity)); color: rgb(37 32 52 / var(--demoable-react-text-opacity)); padding: 16px; border: 1px solid #cfc3e1; border-radius: 12px; box-shadow: 0 10px 45px #25203426; pointer-events: auto; z-index: 5; }
+.demoable-react-settings label { display: block; }
+.demoable-react-settings input[type=range] { display: block; width: 100%; }
+.demoable-react-settings output { float: right; }
+.demoable-react-outline { position: fixed; border: 1px dashed #7256d855; pointer-events: none; border-radius: 3px; }
+.demoable-react-outline[data-active=true] { border: 2px solid var(--demoable-react-accent); background: #7256d807; }
+.demoable-react-layer .demoable-react-pin { position: fixed; padding: 0; font-size: 12px; line-height: 24px; color: #432a77; background: #faf8ffd9; opacity: .65; pointer-events: auto; z-index: 3; border-radius: 50%; }
+.demoable-react-layer .demoable-react-pin[data-active=true] { opacity: 1; border-color: var(--demoable-react-accent); }
+.demoable-react-layer .demoable-react-pin[aria-pressed=true] { font-weight: 900; }
+.demoable-react-context { position: fixed; width: max-content; min-width: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #a48bc6; border-radius: 12px; background: rgb(var(--demoable-react-surface-rgb) / var(--demoable-react-background-opacity)); box-shadow: 0 12px 48px #25203424; pointer-events: auto; z-index: 2; }
+.demoable-react-context-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; color: rgb(37 32 52 / var(--demoable-react-text-opacity)); border-bottom: 1px solid #7256d82b; }
+.demoable-react-context-body { min-height: 0; overflow: auto; overflow-wrap: anywhere; padding: 14px 16px; width: max-content; max-width: min(360px, 100%); color: rgb(37 32 52 / var(--demoable-react-text-opacity)); }
+.demoable-react-context-body > :first-child { margin-top: 0; }
+.demoable-react-context-body > :last-child { margin-bottom: 0; }
+.demoable-react-context-body a { color: inherit; text-decoration: underline; }
+@media (prefers-reduced-motion: reduce) { .demoable-react-hint { transition: none; } }
+
+.demoable-react-context:has(> .demoable-react-context-body:empty) { visibility: hidden; }
+
+.demoable-react-events { box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; max-height: 50dvh; overflow: hidden; border: 1px solid #c8bfd8; background: #faf8ff; color: #252034; font: 14px/1.5 system-ui,sans-serif; }
+.demoable-react-events *, .demoable-react-events *::before, .demoable-react-events *::after { box-sizing: border-box; }
+.demoable-react-events button { color: #432a77; background: white; border: 1px solid #c8bfd8; border-radius: 6px; padding: 5px 9px; font: inherit; cursor: pointer; }
+.demoable-react-events :is(button,a,input,[tabindex]):focus-visible { outline: 3px solid #7256d8; outline-offset: -3px; }
+.demoable-react-events-header { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 72px 8px 14px; border-bottom: 1px solid #ded6e9; }
+.demoable-react-event-scroll { min-height: 0; overflow: auto; overflow-anchor: none; overscroll-behavior: contain; }
+.demoable-react-event-content { position: relative; }
+.demoable-react-event { padding: 10px 72px 10px 14px; border-bottom: 1px solid #e7e0ef; overflow-wrap: anywhere; animation: demoable-react-event-arrive 120ms ease-out; }
+.demoable-react-event[data-removing=true] { opacity: 0; animation: demoable-react-event-depart var(--demoable-react-fade-out,200ms) linear; }
+.demoable-react-event-heading { display: flex; align-items: center; gap: 10px; }
+.demoable-react-event-heading strong { flex: 1; min-width: 0; }
+.demoable-react-event-heading button { flex-shrink: 0; }
+.demoable-react-event-state { font-size: 12px; color: #615b6a; }
+.demoable-react-event-state[data-state=succeeded] { color: #2f693e; }
+.demoable-react-event-state[data-state=failed] { color: #9b3434; }
+.demoable-react-event-description { margin-top: 6px; }
+.demoable-react-event-description > :first-child { margin-top: 0; }
+.demoable-react-event-description > :last-child { margin-bottom: 0; }
+.demoable-react-event progress { display: block; width: min(100%,320px); margin-top: 8px; accent-color: #7256d8; }
+.demoable-react-event-empty { margin: 0; padding: 16px 14px; color: #6e647b; }
+@keyframes demoable-react-event-arrive { from { opacity: 0; } to { opacity: 1; } }
+@keyframes demoable-react-event-depart { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .demoable-react-event { animation: none; transition: none !important; } }
+
+.demoable-react-layer .demoable-react-close { width: min(26px, 100vw, 100vh); height: min(26px, 100vw, 100vh); flex: 0 0 auto; padding: 0; border-radius: 50%; line-height: 1; }
+.demoable-react-context-header { min-height: 0; max-height: 100%; overflow: auto; }
+.demoable-react-layout { --demoable-react-demo-surface: #e9e6f0; --demoable-react-app-surface: #fff; --demoable-react-app-radius: 28px; --demoable-react-app-inset: 16px; box-sizing: border-box; height: 100dvh; min-height: 0; display: grid; grid-template-rows: auto minmax(0,1fr) auto; overflow: hidden; background: var(--demoable-react-demo-surface); }
+.demoable-react-layout > .demoable-react-orientation { grid-row: 1; padding-block: min(14px, calc(var(--demoable-react-layout-height, 100dvh) * .03)); max-height: min(30dvh, calc(var(--demoable-react-layout-height, 100dvh) * .3)); }
+.demoable-react-layout > .demoable-react-app { grid-row: 2; }
+.demoable-react-layout > .demoable-react-events { grid-row: 3; max-height: min(50dvh, calc(var(--demoable-react-layout-height, 100dvh) * .5)); }
+.demoable-react-layout > .demoable-react-events .demoable-react-events-header { min-height: 0; max-height: 50%; overflow: auto; }
+.demoable-react-app { box-sizing: border-box; min-height: 0; min-width: 0; margin: min(8px, calc(var(--demoable-react-layout-height, 100dvh) * .02)) min(var(--demoable-react-app-inset), 3vw); overflow: auto; overscroll-behavior: contain; border-radius: var(--demoable-react-app-radius); background: var(--demoable-react-app-surface); isolation: isolate; }
+.demoable-react-orientation { box-sizing: border-box; min-height: 0; min-width: 0; max-height: 30dvh; overflow: auto; overflow-wrap: anywhere; padding: 14px max(18px, 4vw); color: #302a40; font: 14px/1.5 system-ui,sans-serif; }
+.demoable-react-orientation[hidden] { display: none !important; }
+.demoable-react-orientation-text > :first-child { margin-top: 0; }
+.demoable-react-orientation-text > :last-child { margin-bottom: 0; }
+.demoable-react-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; }
+.demoable-react-orientation-text + .demoable-react-controls { margin-top: 10px; }
+.demoable-react-controls > * { min-width: 0; max-width: 100%; }
+.demoable-react-controls input:not([type=checkbox]):not([type=radio]), .demoable-react-controls select, .demoable-react-controls textarea { box-sizing: border-box; max-width: 100%; font: inherit; }
+.demoable-react-orientation :is(button,input,textarea,select,a,[tabindex]):focus-visible { outline: 3px solid #7256d8; outline-offset: -3px; }
+@media (max-height: 240px) { .demoable-react-orientation { padding: 2px 8px; } .demoable-react-app { margin-block: 2px; } .demoable-react-layout .demoable-react-events-header { overflow: auto; flex-shrink: 1; min-height: 0; } }
+
+.demoable-react-layer .demoable-react-settings button { color: inherit; background: rgb(var(--demoable-react-surface-rgb) / var(--demoable-react-background-opacity)); }
+
+.demoable-react-settings-layer { z-index: calc(var(--demoable-react-z-index, 2147483000) + 1); }
+
+.demoable-react-layer .demoable-react-context button { color: inherit; }
