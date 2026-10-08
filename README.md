@@ -98,6 +98,20 @@ export function Demo() {
 
 `DemoLayout` handles the presentation grid; pass your own React controls through its `controls` prop. `OrientationPanel` and `EventLog` also work independently in host-selected positions. Mount `DemoLayout` or `OrientationPanel` to provide settings; the provider alone does not add a gear. `Inspectable` renders a `div`. Use [`useInspectable`](docs/api/inspection.md) for table, inline, flex/grid-sensitive or existing markup. `packageInfo` and its `PackageInfo` type remain available. There is no CommonJS export. Distributed under the [MIT license](LICENSE), Copyright (c) 2026 borwood.
 
+## Agent skills
+
+The npm package includes integration skills with API references and runnable examples. Installing the package does not automatically register a skill with your coding agent.
+
+After installing the package above, run this from your consuming project's root:
+
+```powershell
+npx skills add ./node_modules/@borwood/demoable-react/skills/agent/integrate-demoable-react
+```
+
+This uses Vercel's third-party [skills CLI](https://github.com/vercel-labs/skills); its current version, 1.7.1, requires Node **22.20.0 or newer**. Select your agent, such as Codex or Claude Code, and choose **Project** installation scope. The bundled agent skill supports both clients. Start a fresh agent session in that project after installation.
+
+For manual installation, discovery paths, explicit invocation, and the equivalent Claude skill, see the [integration skills guide](docs/integration-skills.md). Copy the complete skill folder, including its references and assets.
+
 ## Verify
 
 Install the browser engines once, then run the configured checks:
