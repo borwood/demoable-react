@@ -27,7 +27,7 @@ Orientation and host controls sit above a rounded, inset app surface; live event
 | Distribution | ESM JavaScript, public declarations and explicit stylesheet export; React/DOM peer dependencies |
 | Build and validation | Vite 8.3.3, Vitest/Testing Library, Playwright 1.64.0; actual packed-package consumers |
 
-Registration connects a stable identity to explicit DOM members and context. Input chooses one active identity; measured geometry places outlines, pin controls, and one context panel. Each provider owns its settings, selection and event store. The log subscribes to immutable snapshots and reserves its measured region for context placement. There is no backend, telemetry, persistent storage, or required CSS framework. [Inspection rules](docs/api/inspection.md), [event APIs and lifetime semantics](docs/api/events.md), and [layout and orientation controls](docs/api/layout.md) document the exact integration contracts.
+Registration connects a stable identity to explicit DOM members and context. Input chooses one active identity; measured geometry places outlines, pin controls, and one context panel. Each provider owns its settings, selection and event store. The log subscribes to immutable snapshots and reserves its measured region for context placement. There is no backend, telemetry, or required CSS framework. Optional session storage restores explicitly selected demo state. [Inspection rules](docs/api/inspection.md), [event APIs and lifetime semantics](docs/api/events.md), and [layout and orientation controls](docs/api/layout.md) document the exact integration contracts.
 
 ## Run locally
 
@@ -140,3 +140,10 @@ The peer range is `^18.3.1 || ^19.3.0`; only the exact pairs above are tested. P
 Portable [agent and Claude skills](docs/integration-skills.md) and [runnable examples](docs/examples.md) ship with the npm package and local archive. Event history is in memory; there is no persistence, remote event transport, automatic grouping or eviction. The demo performs synthetic application work and has no service integration or deployment configuration.
 
 Production bundle exclusion is not implemented: hiding inspection at runtime does not remove bundled code. The demo has no hosted deployment. Compatibility evidence is limited to the tested matrix above.
+
+
+### Dogfooding fixes in this checkout
+
+These additions are not yet published as 0.1.0: hidden/disclosure target detection and `enabled`, provider `theme`, opt-in `sessionKey` plus `useDemoSessionState`, clipped native app scrollbars, SVG controls, and header-driven event expansion with a two-row minimum. See the API references for contracts and examples; install a locally built archive to try them.
+
+Install the package locally in the consuming app and commit its lockfile; a global npm installation is insufficient. The package supports Node 22.19+, while the skill-install CLI used during integration required 22.20+. If that CLI rejects your runtime, use your agent's standard skill installer or manually copy `skills/agent/integrate-demoable-react` into its user skills directory. Skill installation and application dependency installation are separate.

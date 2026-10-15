@@ -113,8 +113,8 @@ export async function verifyInspection(page, url) {
   await expect(contextBox(page)).toHaveCSS('background-color', 'rgba(250, 248, 255, 0.75)');
   await expect(contextBox(page).locator('.demoable-react-context-body')).toHaveCSS('color', 'rgba(37, 32, 52, 0.9)');
   assert(Math.abs((await contextBox(page).boundingBox()).x - ((await page.getByTestId('child').boundingBox()).x + (await page.getByTestId('child').boundingBox()).width + 8)) < 2, 'card sits adjacent to target');
-  await expect(pin(page, 'Child target')).toHaveText('?');
-  await expect(page.getByRole('button', {name:'Dismiss component context'})).toHaveText('x');
+  await expect(pin(page, 'Child target').locator('svg')).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.getByRole('button', {name:'Dismiss component context'}).locator('svg')).toHaveAttribute('aria-hidden', 'true');
   const circle = await pin(page, 'Child target').boundingBox();
   assert.equal(circle.width, circle.height, 'circular pin has equal dimensions');
   assert(circle.width >= 24);
@@ -389,7 +389,7 @@ export async function verifyMobileAndHint(browser, url) {
     await expect(page.getByText(hint, { exact: true })).toHaveCount(0, { timeout: 6500 });
     await page.goto(`${url}/?fixture=inspection&device=auto`);
     const autoMobile = await page.evaluate(() => matchMedia('(hover: none) and (pointer: coarse)').matches);
-    assert.equal((await state(page)).active, autoMobile, 'auto follows primary-input query, not touch support alone');
+    await expect.poll(async () => (await state(page)).active, {message:'auto follows primary-input query after hydration, not touch support alone'}).toBe(autoMobile);
     await page.keyboard.press('?');
     assert.equal((await state(page)).active, true);
     assert.deepEqual(errors, [], 'Mobile consumer has no browser errors');

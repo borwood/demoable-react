@@ -55,3 +55,21 @@ All package selectors are scoped. Customize these variables on your layout class
 | `--demoable-react-app-inset` | `16px` (bounded by 3vw) |
 
 Presentation `className`, `style`, `appClassName` and `appStyle` apply only while active; their visual and layout effects are removed while inactive. Stable boxless wrapper elements remain in the DOM so app and control instances stay mounted. It does not reset the host app, create a control schema or provide a state backend. Avoid unbounded fixed-width application content; the active app region scrolls its own overflow. Inactive content follows the host's original scrolling model. The runnable demo uses a text field for the presented name and a toggle that changes counter increments.
+
+
+## Centralized theme (unreleased checkout API)
+
+`InspectionProvider` accepts `theme: InspectionTheme`. Values are applied to each library surface, including body portals and independently embedded panels, without setting host foregrounds, font sizes or opacity. CSS tokens remain usable for local overrides. Provider values take precedence over inherited variables; explicit panel styles can override them.
+
+```tsx
+<InspectionProvider sessionKey="portfolio-demo" theme={{
+  demoSurface: '#181e21', surfaceRgb: '24 30 33', inkRgb: '235 240 242',
+  ink: '#ebf0f2', muted: '#a9b6bc', border: '#46555c', accent: '#bfa7ff',
+  buttonSurface: '#29343a', hoverSurface: '#3a4750', focus: '#d1bcff',
+  success: '#8ee2a3', failure: '#ffabab', cancelled: '#c5bdad',
+}}>{children}</InspectionProvider>
+```
+
+`surfaceRgb` and `inkRgb` are space-separated RGB channels so background and text alpha remain independent. `ink` is the opaque foreground for panels/controls. Other fields accept CSS colors. Each maps to a kebab-case token, e.g. `hoverSurface` to `--demoable-react-hover-surface`. `eventSurface` and `eventBorder` default to transparent so the log blends with the shell; `border` still controls internal separators. Status colors cover success/failure/cancellation, with running text using `muted`. Scope host button/reset selectors to host content to avoid collisions with library controls. Theme does not style arbitrary host controls inside the app.
+
+The rounded `.demoable-react-app-frame` clips the inner `.demoable-react-app` scroller, including native scrollbar paint. `appClassName` and `appStyle` still apply to the inner scrolling element. Radius/inset tokens govern the outer frame. When adding this shell, update window-based scroll restoration, sticky positioning, anchor/focus navigation and scroll listeners to account for the app scroll owner. Both wrappers use `display:contents` when inactive; host children stay mounted.

@@ -24,3 +24,6 @@ export type { EventLogProps } from './event-log';
 
 export { OrientationPanel, DemoLayout } from './demo-layout';
 export type { OrientationPanelProps, DemoLayoutProps } from './demo-layout';
+
+export type { InspectionTheme } from './theme';
+export { useDemoSessionState } from './session';
