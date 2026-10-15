@@ -82,3 +82,48 @@ Package selectors begin `demoable-react-`. `.demoable-react-theme` provides opt-
 Pin and close buttons show only **?** and lowercase **x** inside equal 26px circles. Normal pin placement is inset2 CSS pixels from the target top and left; collisions and viewport limits can relocate it. The entire circle responds to pointer/touch input, and native buttons retain accessible names, focus indication and pin state. Very small viewports can reduce the diameter. An offscreen pin keeps its last valid anchor and side, clamped again on resize; its rich content stays mounted during repositioning.
 
 In pathological viewports with no free rectangle, the context falls back to viewport bounds and internal scrolling. The header itself scrolls when necessary to keep dismissal reachable; pin controls remain above overlapping context. Keep enough unreserved space for comfortable interaction. The standard [demo layout](layout.md) reserves its top and bottom panels while retaining flexible app space.
+
+
+## Hidden and disabled targets
+
+`Inspectable`, `useInspectable` and `useInspectionGroup` accept `enabled?: boolean` (default true). Disabled targets have no inspection UI. Native closed `details` content, `display:none`, `visibility:hidden/collapse` and `content-visibility:hidden` are excluded automatically, including hidden ancestors. The first visible `summary` can be annotated independently. Closing a disclosure clears its hidden target's pin; scrolling or clipping an otherwise rendered target offscreen preserves its pin. Unmount also clears it. Changes are measured while inspection is active without requiring scroll or resize.
+
+Prefer refs on the actual visible region. For application-specific visibility that CSS cannot express, pass `enabled={isShown}`. Groups remain inspectable while at least one enabled member is rendered. Marker placement is automatic with collision avoidance; there is no public placement prop. Use an existing meaningful region and optional active-only host spacing for crowded nested forms; do not invent unsupported placement options.
+
+## Session storage
+
+Set a stable, application-specific `sessionKey` on the provider to opt into `sessionStorage`. Without it, state remains in memory. Values use separate `demoable-react:v1:<encoded namespace>:<encoded field>` keys. Restored fields are activation, component/event modes, opacity and event-log expansion. Mobile still stays active. Pins, DOM identities, credentials, document data and event history are never automatically stored.
+
+SSR and the first client render use initial defaults. Portals and automatic device detection also wait until mount to preserve the server-rendered host DOM. After mount, valid stored values replace the defaults; only then are values written. Invalid JSON, obsolete schemas and unavailable/quota-blocked storage fall back to working in-memory state. A brief default-state render is possible before restoration. Keep the provider namespace stable for its lifetime; use a React key to remount if switching namespaces.
+
+For explicit host-owned JSON state, use a unique field key and a type guard:
+
+```tsx
+const [scenario, setScenario] = useDemoSessionState(
+  'host:scenario', 'normal',
+  (value): value is string => typeof value === 'string' && ['normal', 'slow'].includes(value),
+);
+```
+
+Use one mounted owner per field, then pass values/setters to controls. This is not synchronization between hooks or tabs. A stable layout preserves state on SPA routes; session storage restores it after full navigation, reload or same-tab authentication return to the same origin. Separate tabs have independent storage, although browsers may initially copy an opener's session. Browser session recovery can restore closed sessions; tab close is not a secure erasure guarantee. Do not store secrets or raw uploads.
+
+
+A disclosure and nested form can keep badges clear of their first controls with active-only host spacing:
+
+```tsx
+function UploadDetails({ showUpload }: { showUpload: boolean }) {
+  const { componentVisible } = useInspection();
+  const form = useInspectable<HTMLFormElement>({
+    label: 'PDF input contract', enabled: showUpload,
+    context: <p>Describe the supported input here.</p>,
+  });
+  return <details>
+    <summary>Upload a PDF</summary>
+    {showUpload && <form ref={form.ref} style={{ paddingTop: componentVisible ? 32 : 0 }}>
+      <label>PDF document <input type="file" accept="application/pdf" /></label>
+    </form>}
+  </details>;
+}
+```
+
+Keep the real form submission handler/ref composition in the consuming app. Check marker collision again with the card pinned, not just initial placement; automatic collision repositioning may move a badge. Avoid annotating tiny nested controls when their existing form/section communicates the same context.

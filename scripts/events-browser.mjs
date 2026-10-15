@@ -152,9 +152,10 @@ export async function verifyEventsTouch(browser,url) {
 if (process.argv.includes('--local')) {
  const { createServer } = await import('vite');
  const { chromium } = await import('@playwright/test');
- const server = await createServer({configFile:false,define:{__PACKAGE_NAME__:JSON.stringify('@borwood/demoable-react'),__PACKAGE_VERSION__:JSON.stringify('0.1.0')},root:fileURLToPath(new URL('../',import.meta.url)),server:{host:'127.0.0.1',port:0},plugins:[{
+ const metadata = JSON.parse(await (await import('node:fs/promises')).readFile(new URL('../package.json', import.meta.url), 'utf8'));
+ const server = await createServer({configFile:false,define:{__PACKAGE_NAME__:JSON.stringify('@borwood/demoable-react'),__PACKAGE_VERSION__:JSON.stringify(metadata.version)},root:fileURLToPath(new URL('../',import.meta.url)),server:{host:'127.0.0.1',port:0},plugins:[{
   name:'events-acceptance-fixture',
-  configureServer(server) { server.middlewares.use((req,res,next) => { if (!req.url.startsWith('/__events')) return next(); res.setHeader('Content-Type','text/html'); res.end('<html><script>var __PACKAGE_NAME__="@borwood/demoable-react", __PACKAGE_VERSION__="0.1.0";</script><body style="margin:0"><div id="root"></div><script type="module" src="/@id/events-fixture.tsx"></script></body></html>'); }); },
+  configureServer(server) { server.middlewares.use((req,res,next) => { if (!req.url.startsWith('/__events')) return next(); res.setHeader('Content-Type','text/html'); res.end('<html><script>var __PACKAGE_NAME__="@borwood/demoable-react";</script><body style="margin:0"><div id="root"></div><script type="module" src="/@id/events-fixture.tsx"></script></body></html>'); }); },
   resolveId(id) { if(id === 'events-fixture.tsx') return id; },
   load(id) { if(id === 'events-fixture.tsx') return eventsFixture.replaceAll("'@borwood/demoable-react'","'/src/index.ts'").replaceAll("'@borwood/demoable-react/styles.css'","'/src/styles.css'") + `\nimport {createRoot} from 'react-dom/client';createRoot(document.getElementById('root')!).render(<EventsFixture/>);`; }
  }]});

@@ -5,7 +5,7 @@ description: Add or update Demoable React component explanations and live events
 
 # Integrate Demoable React
 
-Use the installed public package API and import `@borwood/demoable-react/styles.css` once. Install `@borwood/demoable-react@0.1.0` from npm, or install a supplied local archive when evaluating a source checkout before registry publication. Preserve the user's existing React version and build system. Matched React/DOM 18.3.1 and 19.3.0 are tested. ESM, browser rendering and Node 22.19+ tooling are supported; no CommonJS entry is supplied.
+Use the installed public package API and import `@borwood/demoable-react/styles.css` once. Install `@borwood/demoable-react@0.2.0` from npm when available, or use the supplied 0.2.0 local archive before registry publication. Preserve the user's existing React version and build system. Matched React/DOM 18.3.1 and 19.3.0 are tested. ESM, browser rendering and Node 22.19+ tooling are supported; no CommonJS entry is supplied.
 
 ## Compose the application
 
@@ -31,7 +31,7 @@ Choose manual retention (default), creation-timed `{type:'timed', durationMs:432
 
 Use `instrumentHandler` for attempt/result descriptions while preserving arguments, `this`, exact returns/promises, errors and propagation. Use `trackPromise` for an existing promise and keep application error handling. Neither helper schedules or cancels application work. Clean up application-owned timers/subscriptions on unmount; the provider owns its store disposal. Owners of standalone `createEventStore` must call `dispose()`.
 
-The log is independently embeddable, visible only with overall and event modes enabled. It has a one-row empty minimum, measures up to three actual rows in compact mode, and expands to content up to half the viewport with internal scrolling. Its dedicated expansion control does not hijack entry interactions. Newest creation appears first; updates stay in place and reading older entries preserves scroll position. There is no grouping, eviction or persistent history.
+The log is independently embeddable, visible only with overall and event modes enabled. It has a one-row empty minimum, measures up to three actual rows in compact mode, and expands to content up to half the viewport with internal scrolling. Its header button toggles expansion with keyboard support; expanded mode reserves at least two baseline rows, within the viewport cap. Entry interactions do not toggle it. Newest creation appears first; updates stay in place and reading older entries preserves scroll position. There is no grouping, eviction or persistent history.
 
 ## Run and adapt the examples
 
@@ -44,8 +44,25 @@ npm run build
 npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 ```
 
-For a local archive instead, replace the first command with `npm install C:/path/to/borwood-demoable-react-0.1.0.tgz` using its actual path. The [npm version page](https://www.npmjs.com/package/@borwood/demoable-react/v/0.1.0) shows registry availability.
+Before registry publication, use a local archive: replace the first command with `npm install C:/path/to/borwood-demoable-react-0.2.0.tgz` using its actual path. The [npm version page](https://www.npmjs.com/package/@borwood/demoable-react) shows registry availability.
 
 Open http://127.0.0.1:5173. Press `?`; inspect the nested counter, pin and expand its interactive explanation, increment the host counter, use the existing-element ref and its focus button, then inspect the shared delivery group/portal. Run overlapping work, failure, cancellation, outcome-only and wrapped-handler actions. Edit the top controls and hide/show inspection to confirm preserved state. Stop the server with Ctrl+C in its terminal. The scaffold uses synthetic local work and no backend. Adapt the relevant patterns to the user's application rather than replacing it with this demo.
 
 Check the installed types and build, then exercise affected interaction, geometry, keyboard/touch and hidden-lifetime behavior. Runtime hiding does not remove code from production bundles: production exclusion, DEV/DEMO build integration, hosted deployment and cross-session event history are not implemented. Do not imply that installing this skill authorizes publishing or unrelated application changes.
+
+
+## Lessons from real integrations
+
+Use provider `theme` for centralized demo colors (including portaled cards/settings); read [layout](references/layout.md) for the supported fields and RGB opacity channels. Keep host global button rules scoped to host content. The default event surface/outer border are transparent; internal separators are independent.
+
+Opt into `sessionKey` when same-tab navigation, reload and authentication round trips must restore presentation. Use `useDemoSessionState` with an explicit type guard for selected JSON demo controls; read [inspection](references/inspection.md) for hydration and storage limits. Never persist secrets, raw documents or event history. Stable provider placement alone does not survive full navigation.
+
+Validate closed/open native disclosures as well as conditional unmount, display/visibility hiding, clipping and offscreen scrolling. Annotate the visible summary separately from its hidden contents. Use `enabled` for application-specific visibility. Hidden targets clear pins; offscreen rendered targets retain them. Nested form labels and upload controls need representative marker collision checks; placement is automatic, with no placement prop.
+
+`DemoLayout` owns an app scroller: audit scroll restoration, sticky headers, focus/anchor navigation and window scroll listeners. Preserve user focus when delayed responses arrive; an async detail view must not steal focus from a newly opened upload disclosure.
+
+Promise resolution is not domain success: fetch resolves on HTTP errors, GraphQL can return errors with HTTP 200, and handlers may swallow failures. Use stable event handles with explicit `complete`, `fail` and `cancel` for these cases, session expiry and stale responses. Check HTTP status and domain results before reporting success; guard obsolete request generations and clean up aborts/subscriptions. Aborting an upload does not establish that server persistence was undone.
+
+Keep demo credentials, presenter notes and scenario controls in the demo layer. Register the normal login link and fetch demo credentials only when its context is inspected. Keep ordinary functional guidance, errors and truthful data-provenance disclosures in the product UI.
+
+Install the pinned npm dependency locally in the consuming project and retain its lockfile; a global npm install does not satisfy app imports. Skills may be installed at user scope. The package requires Node 22.19+; the skills CLI (version 1.7.2) requires Node 22.20+. On an older supported package runtime, use the standard agent skill installer or manually copy the bundled skill directory into the agent's skills directory instead of requiring a runtime upgrade for skill discovery.

@@ -1,12 +1,16 @@
 import { Children, Fragment, createContext, forwardRef, isValidElement, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type HTMLAttributes, type ReactNode, type Ref, type RefCallback } from 'react';
+import { Icon } from './icons';
+import { SessionContext, useDemoSessionState, isBoolean, isOpacity } from './session';
+import { themeStyle, type InspectionTheme } from './theme';
 import { createPortal } from 'react-dom';
 import { createEventStore, type EventStore, type EventStoreOptions } from './events';
 
 export type InspectionDevice = 'auto' | 'desktop' | 'mobile';
-export interface InspectionProviderProps { children: ReactNode; device?: InspectionDevice; initialComponentInspection?: boolean; initialEventInspection?: boolean; initialOpacity?: number; eventOptions?: EventStoreOptions; }
-export interface InspectableOptions { context?: ReactNode; label: string; ownerId?: string; }
+export interface InspectionProviderProps { children: ReactNode; theme?: InspectionTheme; sessionKey?: string; device?: InspectionDevice; initialComponentInspection?: boolean; initialEventInspection?: boolean; initialOpacity?: number; eventOptions?: EventStoreOptions; }
+export interface InspectableOptions { context?: ReactNode; enabled?: boolean; label: string; ownerId?: string; }
 export interface InspectionController {
   events: EventStore;
+  theme: CSSProperties;
   active: boolean; componentInspection: boolean; eventInspection: boolean; componentVisible: boolean; eventVisible: boolean;
   opacity: number; pinnedId: string | null; activeId: string | null;
   setActive(value: boolean): void; setComponentInspection(value: boolean): void; setEventInspection(value: boolean): void;
@@ -19,7 +23,8 @@ type Internal = { registry: Map<string, Entry>; reserved: Map<string, HTMLElemen
 const Context = createContext<Internal | null>(null);
 /** One ownership rule for selection lifetime, suppression and visible geometry. */
 function memberElements(registry: Map<string, Entry>, id: string): HTMLElement[] {
-  return [...new Set([...registry.values()].filter(entry => entry.id === id || entry.ownerId === id).flatMap(entry => [...entry.elements.values()]))];
+  if (registry.get(id)?.enabled === false) return [];
+  return [...new Set([...registry.values()].filter(entry => (entry.id === id || entry.ownerId === id) && entry.enabled !== false).flatMap(entry => [...entry.elements.values()]))];
 }
 const clamp = (value: number, maximum: number, minimum = 0) => Math.max(minimum, Math.min(maximum, value));
 const normalizeOpacity = (value: number) => Number.isFinite(value) ? clamp(value, 1) : 0.75;
@@ -28,7 +33,7 @@ export function useInspection(): InspectionController { return internal().contro
 /** Stable provider-scoped reporting API; independent of visibility. */
 export function useEvents(): EventStore { return internal().controller.events; }
 function useMedia(query: string) {
-  const [matches, setMatches] = useState(() => typeof matchMedia === 'function' && matchMedia(query).matches);
+  const [matches, setMatches] = useState(false);
   useEffect(() => { if (typeof matchMedia !== 'function') return; const media = matchMedia(query); const update = () => setMatches(media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, [query]);
   return matches;
 }
@@ -42,8 +47,22 @@ function editable(event: KeyboardEvent) {
   return false;
 }
 function rect(left: number, top: number, right: number, bottom: number): Rect { return { left, top, right, bottom, width: Math.max(0, right - left), height: Math.max(0, bottom - top) }; }
+function isRendered(element: HTMLElement): boolean {
+  if (!element.isConnected) return false;
+  const visibility = getComputedStyle(element).visibility;
+  if (visibility === 'hidden' || visibility === 'collapse') return false;
+  for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+    const style = getComputedStyle(node);
+    if (style.display === 'none' || style.contentVisibility === 'hidden') return false;
+    if (node !== element && node instanceof HTMLDetailsElement && !node.open) {
+      const summary = [...node.children].find(child => child.tagName === 'SUMMARY');
+      if (!summary?.contains(element)) return false;
+    }
+  }
+  return true;
+}
 function visibleRect(element: HTMLElement, width: number, height: number): Rect | null {
-  if (!element.isConnected || element.getClientRects().length === 0) return null;
+  if (!isRendered(element) || element.getClientRects().length === 0) return null;
   const bounds = element.getBoundingClientRect();
   let left = Math.max(0, bounds.left), top = Math.max(0, bounds.top), right = Math.min(width, bounds.right), bottom = Math.min(height, bounds.bottom);
   for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
@@ -57,7 +76,12 @@ function visibleRect(element: HTMLElement, width: number, height: number): Rect 
 function hasContent(content: ReactNode): boolean {
   return Children.toArray(content).some(child => typeof child === 'string' ? child.length > 0 : isValidElement(child) && child.type === Fragment ? hasContent((child.props as { children?: ReactNode }).children) : true);
 }
-export function InspectionProvider({ children, device = 'auto', initialComponentInspection = true, initialEventInspection = true, initialOpacity = .75, eventOptions }: InspectionProviderProps) {
+export function InspectionProvider(props: InspectionProviderProps) {
+  return <SessionContext.Provider value={props.sessionKey}><InspectionProviderState {...props} /></SessionContext.Provider>;
+}
+function InspectionProviderState({ children, theme: themeConfig, device = 'auto', initialComponentInspection = true, initialEventInspection = true, initialOpacity = .75, eventOptions }: InspectionProviderProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [events] = useState(() => createEventStore(eventOptions));
   const eventMount = useRef(0);
   useEffect(() => {
@@ -70,10 +94,10 @@ export function InspectionProvider({ children, device = 'auto', initialComponent
   }, [events]);
   const autoMobile = useMedia('(hover: none) and (pointer: coarse)'); const mobile = device === 'mobile' || (device === 'auto' && autoMobile);
   const reducedMotion = useMedia('(prefers-reduced-motion: reduce)');
-  const [desktopActive, setDesktopActive] = useState(false); const active = mobile || desktopActive;
-  const [componentInspection, setComponentInspection] = useState(initialComponentInspection);
-  const [eventInspection, setEventInspection] = useState(initialEventInspection);
-  const [opacity, updateOpacity] = useState(() => normalizeOpacity(initialOpacity));
+  const [desktopActive, setDesktopActive] = useDemoSessionState('active', false, isBoolean); const active = mobile || desktopActive;
+  const [componentInspection, setComponentInspection] = useDemoSessionState('components', initialComponentInspection, isBoolean);
+  const [eventInspection, setEventInspection] = useDemoSessionState('events', initialEventInspection, isBoolean);
+  const [opacity, updateOpacity] = useDemoSessionState('opacity', normalizeOpacity(initialOpacity), isOpacity);
   const setOpacity = useCallback((value: number) => updateOpacity(normalizeOpacity(value)), []);
   const [hint, setHint] = useState<'shown' | 'fading' | 'gone'>('shown');
   const hintStart = useRef<number | null>(null);
@@ -95,7 +119,7 @@ export function InspectionProvider({ children, device = 'auto', initialComponent
   const cancelLeave = useCallback(() => { if (timer.current !== null) clearTimeout(timer.current); timer.current = null; }, []);
   const dismiss = useCallback(() => { suppression.current = pinnedId ?? hoverId; setPinned(null); setHover(null); cancelLeave(); }, [pinnedId, hoverId, cancelLeave]);
   const pin = useCallback((id: string) => {
-    if (!registry.has(id)) return;
+    if (!registry.has(id) || registry.get(id)?.enabled === false) return;
     cancelLeave(); if (pinnedId === id) { suppression.current = id; setPinned(null); setHover(null); }
     else { suppression.current = null; setPinned(id); pinOrigin.current = [...document.querySelectorAll<HTMLElement>('[data-demoable-target]')].find(control => control.dataset.demoableTarget === id) ?? null; }
   }, [registry, pinnedId, cancelLeave]);
@@ -116,7 +140,7 @@ export function InspectionProvider({ children, device = 'auto', initialComponent
     const resolve = (path: EventTarget[]) => {
       for (const node of path) {
         if (!(node instanceof HTMLElement)) continue;
-        for (const entry of registry.values()) if ([...entry.elements.values()].includes(node)) return entry.ownerId && registry.has(entry.ownerId) ? entry.ownerId : entry.id;
+        for (const entry of registry.values()) if (entry.enabled !== false && [...entry.elements.values()].includes(node) && isRendered(node)) return entry.ownerId && registry.has(entry.ownerId) ? (registry.get(entry.ownerId)?.enabled === false ? null : entry.ownerId) : entry.id;
       }
       return null;
     };
@@ -161,7 +185,7 @@ export function InspectionProvider({ children, device = 'auto', initialComponent
       for (const entry of registry.values()) {
         const elements = memberElements(registry, entry.id);
         targets[entry.id] = elements.map(element => visibleRect(element, width, height)).filter((value): value is Rect => !!value);
-        if (!elements.some(element => element.isConnected)) { setPinned(value => value === entry.id ? null : value); setHover(value => value === entry.id ? null : value); }
+        if (!elements.some(element => isRendered(element))) { setPinned(value => value === entry.id ? null : value); setHover(value => value === entry.id ? null : value); }
       }
       const occupied = [...reserved.values()].map(element => visibleRect(element, width, height)).filter((value): value is Rect => !!value);
       const next = { width, height, targets, occupied }; const serialized = JSON.stringify(next);
@@ -173,9 +197,10 @@ export function InspectionProvider({ children, device = 'auto', initialComponent
     window.addEventListener('resize', measure); window.addEventListener('scroll', measure, true); measure(); frame = requestAnimationFrame(tick);
     return () => { disposed = true; cancelAnimationFrame(frame); observer?.disconnect(); window.removeEventListener('resize', measure); window.removeEventListener('scroll', measure, true); };
   }, [componentVisible, registry, reserved, revision, pinnedId]);
-  const controller: InspectionController = { events, active, componentInspection, eventInspection, componentVisible, eventVisible: active && eventInspection, opacity, pinnedId, activeId, setActive: setDesktopActive, setComponentInspection, setEventInspection, setOpacity, pin, dismiss };
-  const value = useMemo(() => ({ registry, reserved, refresh, controller }), [registry, reserved, refresh, active, componentInspection, eventInspection, opacity, pinnedId, activeId]);
-  return <Context.Provider value={value}>{children}{typeof document !== 'undefined' && createPortal(<div className="demoable-react-layer">
+  const theme = useMemo(() => themeStyle(themeConfig), [themeConfig]);
+  const controller: InspectionController = { theme, events, active, componentInspection, eventInspection, componentVisible, eventVisible: active && eventInspection, opacity, pinnedId, activeId, setActive: setDesktopActive, setComponentInspection, setEventInspection, setOpacity, pin, dismiss };
+  const value = useMemo(() => ({ registry, reserved, refresh, controller }), [registry, reserved, refresh, active, componentInspection, eventInspection, opacity, pinnedId, activeId, theme]);
+  return <Context.Provider value={value}>{children}{mounted && createPortal(<div className="demoable-react-layer" style={theme}>
     {active && hint !== 'gone' && <div className="demoable-react-hint" data-phase={hint}>{"activate component and event inspection with '?' key"}</div>}
     {componentVisible && <><TargetOverlays registry={registry} geometry={geometry} controller={controller} contextBounds={contextBounds} /><ContextBox onBounds={reportContextBounds} entry={activeId ? registry.get(activeId) : undefined} geometry={geometry} opacity={opacity} onDismiss={(keyboard) => { dismiss(); if (keyboard) pinOrigin.current?.focus(); }} onEnter={() => { insideBox.current = true; cancelLeave(); }} onLeave={() => { insideBox.current = false; cancelLeave(); timer.current = setTimeout(() => { timer.current = null; setHover(null); }, 300); }} /></>}
   </div>, document.body)}</Context.Provider>;
@@ -188,7 +213,7 @@ export function useInspectionGroup(options: InspectableOptions) {
   const entry = useRef<Entry>({ ...options, id, elements: new Map() }).current;
   const callbacks = useRef(new Map<string, { reference?: Ref<HTMLElement>; callback: RefCallback<HTMLElement> }>());
   useLayoutEffect(() => { registry.set(id, entry); refresh(); return () => { registry.delete(id); refresh(); }; }, [id, registry, entry, refresh]);
-  useLayoutEffect(() => { if (entry.context !== options.context || entry.label !== options.label || entry.ownerId !== options.ownerId) { entry.context = options.context; entry.label = options.label; entry.ownerId = options.ownerId; refresh(); } }, [entry, options.context, options.label, options.ownerId, refresh]);
+  useLayoutEffect(() => { if (entry.context !== options.context || entry.label !== options.label || entry.ownerId !== options.ownerId || entry.enabled !== options.enabled) { entry.enabled = options.enabled; entry.context = options.context; entry.label = options.label; entry.ownerId = options.ownerId; refresh(); } }, [entry, options.context, options.label, options.ownerId, options.enabled, refresh]);
   const ref = useCallback(<T extends HTMLElement>(key: string, reference?: Ref<T>): RefCallback<T> => {
     const previous = callbacks.current.get(key); if (previous && previous.reference === reference) return previous.callback as RefCallback<T>;
     let cleanup: void | (() => void);
@@ -206,8 +231,8 @@ export function useInspectable<T extends HTMLElement = HTMLElement>(options: Ins
   const group = useInspectionGroup(options); return { id: group.id, ref: group.ref('target', applicationRef) };
 }
 export interface InspectableProps extends Omit<HTMLAttributes<HTMLDivElement>, 'context'>, InspectableOptions {}
-export const Inspectable = forwardRef<HTMLDivElement, InspectableProps>(function Inspectable({ context, label, ownerId, children, ...attributes }, reference) {
-  const target = useInspectable<HTMLDivElement>({ context, label, ownerId }, reference); return <div {...attributes} ref={target.ref}>{children}</div>;
+export const Inspectable = forwardRef<HTMLDivElement, InspectableProps>(function Inspectable({ context, label, ownerId, enabled, children, ...attributes }, reference) {
+  const target = useInspectable<HTMLDivElement>({ context, label, ownerId, enabled }, reference); return <div {...attributes} ref={target.ref}>{children}</div>;
 });
 /** Reserve an actual DOM region, for example an independently embedded event log. */
 export function useOccupiedRegion<T extends HTMLElement = HTMLElement>(): RefCallback<T> {
@@ -249,8 +274,8 @@ export function InspectionSettings() {
   }, [open, controller.active]);
   const close = () => { setOpen(false); gear.current?.focus(); };
   if (!controller.active) return null;
-  return <><button ref={gear} type="button" className="demoable-react-gear" data-demoable-ui="settings" aria-label="Inspection settings" aria-controls={open ? menuId : undefined} aria-expanded={open} onClick={() => setOpen(value => !value)}>⚙</button>
-    {open && createPortal(<div className="demoable-react-layer demoable-react-settings-layer"><div ref={menu} id={menuId} className="demoable-react-settings" role="group" aria-label="Inspection settings" data-demoable-ui="settings" style={{...position, ...alphaStyle(controller.opacity)}} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); close(); } }}>
+  return <><button ref={gear} type="button" className="demoable-react-gear" style={controller.theme} data-demoable-ui="settings" aria-label="Inspection settings" aria-controls={open ? menuId : undefined} aria-expanded={open} onClick={() => setOpen(value => !value)}><Icon name="gear" /></button>
+    {open && createPortal(<div className="demoable-react-layer demoable-react-settings-layer" style={controller.theme}><div ref={menu} id={menuId} className="demoable-react-settings" role="group" aria-label="Inspection settings" data-demoable-ui="settings" style={{...position, ...alphaStyle(controller.opacity)}} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); close(); } }}>
       <strong>Inspection settings</strong><label><input type="checkbox" checked={controller.componentInspection} onChange={event => controller.setComponentInspection(event.target.checked)} /> Component inspection</label><label><input type="checkbox" checked={controller.eventInspection} onChange={event => controller.setEventInspection(event.target.checked)} /> Event inspection</label><label>Info and settings background opacity <output>{Math.round(controller.opacity * 100)}%</output><input aria-label="Info and settings background opacity" type="range" min="0" max="1" step="0.05" value={controller.opacity} onChange={event => controller.setOpacity(Number(event.target.value))} /></label><button type="button" onClick={close}>Close settings</button>
     </div></div>, document.body)}</>;
 }
@@ -274,7 +299,7 @@ function TargetOverlays({ registry, geometry, controller, contextBounds }: { reg
       if (candidates[0]) { left = candidates[0].x; top = candidates[0].y; }
     }
     occupied.push(rect(left, top, left + width, top + height)); const active = controller.activeId === entry.id, pinned = controller.pinnedId === entry.id;
-    return <div key={entry.id}>{rectangles.map((bounds, index) => <div key={index} data-demoable-outline={entry.id} data-active={active} className="demoable-react-outline" style={{ left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height }} />)}<button type="button" data-demoable-ui="pin" data-demoable-target={entry.id} className="demoable-react-pin" aria-label={`Pin ${entry.label}`} aria-pressed={pinned} data-active={active} style={{ left, top, width, height }} onPointerDown={event => { if (event.pointerType === 'mouse') event.preventDefault(); }} onClick={() => controller.pin(entry.id)}>?</button></div>;
+    return <div key={entry.id}>{rectangles.map((bounds, index) => <div key={index} data-demoable-outline={entry.id} data-active={active} className="demoable-react-outline" style={{ left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height }} />)}<button type="button" data-demoable-ui="pin" data-demoable-target={entry.id} className="demoable-react-pin" aria-label={`Pin ${entry.label}`} aria-pressed={pinned} data-active={active} style={{ left, top, width, height }} onPointerDown={event => { if (event.pointerType === 'mouse') event.preventDefault(); }} onClick={() => controller.pin(entry.id)}><Icon name="question" /></button></div>;
   })}</>;
 }
 type Edge = 'right' | 'bottom' | 'left' | 'top';
@@ -346,7 +371,7 @@ function ContextBox({ entry, geometry, opacity, onDismiss, onEnter, onLeave, onB
   useEffect(() => () => onBounds(null), [onBounds]);
   if (!present) return null;
   return <aside ref={box} className="demoable-react-context" data-demoable-ui="context" data-edge={edge} aria-label={`${entry.label} context`} style={style} onPointerEnter={onEnter} onPointerLeave={onLeave} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); onDismiss(true); } }}>
-    <header className="demoable-react-context-header"><strong>{entry.label}</strong><button type="button" className="demoable-react-close" aria-label="Dismiss component context" onClick={event => onDismiss(event.detail === 0)}>x</button></header><div className="demoable-react-context-body">{entry.context}</div>
+    <header className="demoable-react-context-header"><strong>{entry.label}</strong><button type="button" className="demoable-react-close" aria-label="Dismiss component context" onClick={event => onDismiss(event.detail === 0)}><Icon name="close" /></button></header><div className="demoable-react-context-body">{entry.context}</div>
   </aside>;
 }
 

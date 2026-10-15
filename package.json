@@ -1,6 +1,6 @@
 {
   "name": "@borwood/demoable-react",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Optional component inspection and rich contextual explanations for React demos",
   "type": "module",
   "license": "MIT",
@@ -42,11 +42,12 @@
     "build:demo": "vite build --config vite.demo.config.ts",
     "build": "npm run build:lib && npm run build:demo",
     "dev": "npm run build:lib && vite --config vite.demo.config.ts --host 127.0.0.1",
-    "test:integration": "npm run build:lib && vitest run",
+    "test:integration": "npm run build:lib && node scripts/verify-release-package.mjs && vitest run",
     "test:consumer": "npm run build:lib && node scripts/verify-consumers.mjs",
     "test:browser": "npm run build && node scripts/verify-consumers.mjs --browser",
     "skills:sync": "node scripts/sync-integration-skills.mjs",
-    "skills:check": "node scripts/sync-integration-skills.mjs --check"
+    "skills:check": "node scripts/sync-integration-skills.mjs --check",
+    "pack:release": "npm run build:lib && node scripts/pack-release.mjs"
   },
   "devDependencies": {
     "react": "19.3.0",

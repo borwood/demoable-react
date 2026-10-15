@@ -13,11 +13,11 @@ function hasContent(content: ReactNode): boolean {
 }
 /** Host-owned orientation and controls; the overall demo layer governs visibility. */
 export function OrientationPanel({ children, controls, className = '', style }: OrientationPanelProps) {
-  const { active } = useInspection();
+  const { active, theme } = useInspection();
   const occupied = useOccupiedRegion<HTMLElement>();
   const textPresent = hasContent(children);
   // Keep child state alive while display:none releases all layout/occupied space.
-  return <section ref={active ? occupied : null} hidden={!active} className={`demoable-react-orientation ${className}`} style={style} aria-label="Demo orientation" data-demoable-ui="orientation">
+  return <section ref={active ? occupied : null} hidden={!active} className={`demoable-react-orientation ${className}`} style={{...theme, ...style}} aria-label="Demo orientation" data-demoable-ui="orientation">
     {textPresent && <div className="demoable-react-orientation-text">{children}</div>}
     <div className="demoable-react-controls"><InspectionSettings />{controls}</div>
   </section>;
@@ -30,7 +30,7 @@ export interface DemoLayoutProps extends Omit<OrientationPanelProps, 'children'>
 }
 /** Opt-in three-region presentation shell inside an existing InspectionProvider. */
 export function DemoLayout({ children, orientation, controls, className = '', style, appClassName = '', appStyle }: DemoLayoutProps) {
-  const { active } = useInspection();
+  const { active, theme } = useInspection();
   const root = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState<number>();
   useLayoutEffect(() => {
@@ -47,9 +47,9 @@ export function DemoLayout({ children, orientation, controls, className = '', st
     window.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, [active]);
-  return <div ref={root} className={active ? `demoable-react-layout ${className}` : undefined} data-demoable-layout={active ? 'active' : 'inactive'} style={active ? {...style, '--demoable-react-layout-height': height === undefined ? undefined : `${height}px`} as CSSProperties : {display:'contents'}}>
+  return <div ref={root} className={active ? `demoable-react-layout ${className}` : undefined} data-demoable-layout={active ? 'active' : 'inactive'} style={active ? { ...theme, ...style, '--demoable-react-layout-height': height === undefined ? undefined : `${height}px`} as CSSProperties : {display:'contents'}}>
     <OrientationPanel controls={controls}>{orientation}</OrientationPanel>
-    <div className={active ? `demoable-react-app ${appClassName}` : undefined} data-demoable-app={active ? 'active' : 'inactive'} style={active ? appStyle : {display:'contents'}}>{children}</div>
+    <div className={active ? "demoable-react-app-frame" : undefined} style={active ? undefined : {display: 'contents'}}><div className={active ? `demoable-react-app ${appClassName}` : undefined} data-demoable-app={active ? 'active' : 'inactive'} style={active ? appStyle : {display:'contents'}}>{children}</div></div>
     <EventLog />
   </div>;
 }

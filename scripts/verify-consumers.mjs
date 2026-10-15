@@ -1,3 +1,5 @@
+import { packRelease } from './pack-release.mjs';
+import { feedbackFixture, verifyFeedback } from './feedback-browser.mjs';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile, mkdir, copyFile, rm, realpath, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -18,7 +20,9 @@ import { verifyReleaseExamples } from './release-browser.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const metadata = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
 const browserMode = process.argv.includes('--browser');
-const fixtureOnly = process.argv.includes('--fixture-only');
+const feedbackOnly = process.argv.includes('--feedback-only');
+const fixtureOnly = process.argv.includes('--fixture-only') || feedbackOnly;
+const requestedEngine = process.argv.find(value => value.startsWith('--engine='))?.slice(9);
 const npmCli = process.env.npm_execpath;
 assert(npmCli, 'Run through npm run test:consumer or npm run test:browser');
 function npm(args, cwd, capture = false) {
@@ -52,8 +56,8 @@ async function serve(directory) {
   return url;
 }
 try {
-  const packed = JSON.parse(npm(['pack', '--json', '--pack-destination', temporary], root, true))[0];
-  const expectedFiles = ['LICENSE', 'README.md', 'dist/index.d.ts', 'dist/inspection.d.ts', 'dist/events.d.ts', 'dist/event-log.d.ts', 'dist/demo-layout.d.ts', 'dist/instrumentation.d.ts', 'dist/index.js', 'dist/styles.css', 'package.json'];
+  const packed = await packRelease({ root, destination: temporary });
+  const expectedFiles = ['LICENSE', 'README.md', 'dist/index.d.ts', 'dist/session.d.ts', 'dist/theme.d.ts', 'dist/icons.d.ts', 'dist/inspection.d.ts', 'dist/events.d.ts', 'dist/event-log.d.ts', 'dist/demo-layout.d.ts', 'dist/instrumentation.d.ts', 'dist/index.js', 'dist/styles.css', 'package.json'];
   for (const directory of ['docs/api', 'docs/images', 'skills/agent', 'skills/claude']) {
     for (const file of await readdir(join(root, directory), { recursive: true, withFileTypes: true })) {
       if (file.isFile()) expectedFiles.push(join(file.parentPath, file.name).slice(root.length).replaceAll('\\', '/'));
@@ -62,6 +66,7 @@ try {
   expectedFiles.push('docs/integration-skills.md', 'docs/examples.md', 'demo/App.tsx', 'demo/app.css');
   assert.deepEqual(packed.files.map(file => file.path).sort(), expectedFiles.sort(), 'tarball must expose only approved distribution files');
   const tarball = join(temporary, packed.filename);
+  assert.equal(spawnSync('tar', ['-xOf', tarball, 'package/README.md'], { encoding: 'utf8' }).stdout, await readFile(join(root, 'docs/npm/README.md'), 'utf8'));
   const targets = [];
   for (const [version, reactTypes, domTypes] of [['18.3.1', '18.3.31', '18.3.7'], ['19.3.0', '19.3.0', '19.3.0']]) {
     const directory = join(temporary, `react-${version}`);
@@ -73,14 +78,15 @@ try {
     await writeFile(join(directory, 'EventsFixture.tsx'), eventsFixture);
     await writeFile(join(directory, 'SurfaceFixture.tsx'), surfaceFixture);
     await writeFile(join(directory, 'Qa2Fixture.tsx'), qa2Fixture);
+    await writeFile(join(directory, 'FeedbackFixture.tsx'), feedbackFixture);
     await copyFile(join(root, 'skills', 'agent', 'integrate-demoable-react', 'assets', 'demo', 'app.css'), join(directory, 'app.css'));
-    await writeFile(join(directory, 'main.tsx'), `import { createRoot } from 'react-dom/client';\nimport { App } from './App';\nimport { InspectionFixture } from './InspectionFixture';\nimport { EventsFixture } from './EventsFixture';\nimport { SurfaceFixture } from './SurfaceFixture';\nimport { Qa2Fixture } from './Qa2Fixture';\nconst params = new URLSearchParams(location.search);\nif (!params.has('fixture') && !params.has('events') && !params.has('surface') && !params.has('qa2')) await import('./app.css');\ncreateRoot(document.getElementById('root')!).render(params.has('qa2') ? <Qa2Fixture /> : params.has('surface') ? <SurfaceFixture /> : params.has('events') ? <EventsFixture /> : params.has('fixture') ? <InspectionFixture /> : <App />);\n`);
+    await writeFile(join(directory, 'main.tsx'), `import { createRoot } from 'react-dom/client';\nimport { App } from './App';\nimport { InspectionFixture } from './InspectionFixture';\nimport { EventsFixture } from './EventsFixture';\nimport { SurfaceFixture } from './SurfaceFixture';\nimport { Qa2Fixture } from './Qa2Fixture';\nimport { FeedbackFixture } from './FeedbackFixture';\nconst params = new URLSearchParams(location.search);\nif (!params.has('fixture') && !params.has('events') && !params.has('surface') && !params.has('qa2') && !params.has('feedback')) await import('./app.css');\ncreateRoot(document.getElementById('root')!).render(params.has('feedback') ? <FeedbackFixture /> : params.has('qa2') ? <Qa2Fixture /> : params.has('surface') ? <SurfaceFixture /> : params.has('events') ? <EventsFixture /> : params.has('fixture') ? <InspectionFixture /> : <App />);\n`);
     await writeFile(join(directory, 'index.html'), '<!doctype html><html lang="en"><head><meta charset="UTF-8"/><title>Isolated consumer</title><style>[data-testid="theme-probe"] { color: var(--demoable-react-accent); }</style></head><body><div id="root"></div><script type="module" src="/main.tsx"></script></body></html>');
     npm(['install', '--no-audit', '--no-fund'], directory);
     const installed = join(directory, 'node_modules', ...metadata.name.split('/'));
     const installedMetadata = JSON.parse(await readFile(join(installed, 'package.json'), 'utf8'));
     assert.equal(installedMetadata.name, '@borwood/demoable-react');
-    assert.equal(installedMetadata.version, '0.1.0');
+    assert.equal(installedMetadata.version, metadata.version);
     assert.equal(installedMetadata.private, undefined);
     assert.equal(installedMetadata.license, 'MIT');
     assert.deepEqual(installedMetadata.repository, { type: 'git', url: 'git+https://github.com/borwood/demoable-react.git' });
@@ -115,7 +121,7 @@ try {
     }
     const published = await import(pathToFileURL(join(installed, 'dist/index.js')).href);
     assert.deepEqual(published.packageInfo, { name: metadata.name, version: metadata.version });
-    assert.deepEqual(Object.keys(published).sort(), ['packageInfo', 'DemoLayout', 'OrientationPanel', 'InspectionProvider', 'Inspectable', 'useInspection', 'useInspectable', 'useInspectionGroup', 'useOccupiedRegion', 'useEvents', 'createEventStore', 'EventLog', 'trackPromise', 'instrumentHandler'].sort());
+    assert.deepEqual(Object.keys(published).sort(), ['useDemoSessionState', 'packageInfo', 'DemoLayout', 'OrientationPanel', 'InspectionProvider', 'Inspectable', 'useInspection', 'useInspectable', 'useInspectionGroup', 'useOccupiedRegion', 'useEvents', 'createEventStore', 'EventLog', 'trackPromise', 'instrumentHandler'].sort());
     npm(['run', 'typecheck'], directory);
     npm(['run', 'build'], directory);
     console.log(`PASS isolated tarball React/DOM ${version}; types ${reactTypes}/${domTypes}`);
@@ -124,11 +130,13 @@ try {
   if (browserMode) {
     if (!fixtureOnly) targets.push({ name: 'inspection demo', url: await serve(join(root, 'demo-dist')) });
     for (const [name, engine] of Object.entries({ chromium, firefox, webkit })) {
+      if (requestedEngine && name !== requestedEngine) continue;
       const browser = await engine.launch();
       browsers.push(browser);
       console.log(`Browser ${name}: ${browser.version()}`);
       for (const target of targets) {
-        const page = await browser.newPage();
+        const browserContext = await browser.newContext();
+        const page = await browserContext.newPage();
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
@@ -148,15 +156,19 @@ try {
         await verifyReleaseExamples(page, target.url);
         }
         if (target.fixture) {
+          await verifyFeedback(page, target.url);
+          if (feedbackOnly) await verifyMobileAndHint(browser, target.url);
+          if (!feedbackOnly) {
           await verifyInspection(page, target.url);
           await verifyMobileAndHint(browser, target.url);
           await verifyEvents(page, target.url);
           await verifyEventsTouch(browser, target.url);
           await verifySurface(page, target.url);
           await verifyQa2(page, target.url);
+          }
         }
         assert.deepEqual(errors, [], `${name}: ${target.name} browser errors`);
-        await page.close();
+        await browserContext.close();
         console.log(`PASS ${name}: ${target.name} ${fixtureOnly ? 'inspection fixture' : 'metadata, scoped CSS, pointer + keyboard counter'}, no browser errors`);
       }
       await browser.close();

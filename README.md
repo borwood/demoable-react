@@ -1,6 +1,6 @@
 # Demoable React
 
-Demoable React adds an optional explanatory layer to React demos. Viewers can discover annotated regions, pin rich explanations, and continue using the application. The library includes component inspection and independent live events: follow overlapping work, inspect rich context, and keep using the application. The runnable demo uses synthetic asynchronous work; it has no backend integration.
+Demoable React adds an optional explanatory layer to React demos. Viewers can explore annotated components, pin interactive explanations, and follow concurrent work in a live event log while using the application. The runnable demo uses synthetic asynchronous work; it has no backend integration.
 
 ![Live events below the application with pinned interactive context](docs/images/events-pinned.png)
 
@@ -8,13 +8,13 @@ Orientation and host controls sit above a rounded, inset app surface; live event
 
 ## What it demonstrates
 
-- **Context without layout changes:** a provider registry tracks explicit DOM targets; a portal renders pointer-transparent outlines and individually selectable pin controls.
+- **Context without layout changes:** a provider registry tracks explicit DOM targets; a portal renders pointer-transparent outlines and individually selectable pin controls. Hidden and collapsed targets are excluded automatically; `enabled` handles application-specific visibility.
 - **Deliberate exploration:** actual DOM paths choose the deepest nested target. Hover has a 300 ms leave grace; pinning freezes selection and supports direct transfer, dismissal, and unmount cleanup.
 - **Real geometry:** component-relative fit and overlap fallback use the visible target rectangle, track scrolling and layout movement, and accommodate registered occupied regions.
 - **Reusable integration:** wrapper, existing-element refs, multi-root groups, and explicit portal ownership work with React 18 and 19. Rich context can contain links and ordinary controls. Hovering the circular ? also keeps its attached explanation open.
 - **Independent event lifecycles:** stable handles update concurrent same-label work without reordering it; manual, timed and outcome-specific retention continues while hidden. Handler and promise helpers preserve application results and errors.
-- **Measured live history:** actual row geometry sizes an embeddable log continuously; a separate scrolling surface preserves older-entry position and fits within half the viewport.
-- **Independent presentation settings:** desktop activation, mobile behavior, surface-owned settings, and separate background/text opacity leave host application behavior intact.
+- **Measured live history:** actual row geometry sizes an embeddable log continuously; a separate scrolling surface preserves older-entry position and fits within half the viewport. Its keyboard-accessible header toggles expansion, with a two-row minimum in expanded mode.
+- **Independent presentation settings:** desktop activation, mobile behavior, surface-owned settings, and separate background/text opacity leave host application behavior intact. Provider `theme` values apply across panels and portals; opt-in `sessionKey` restores presentation settings, and `useDemoSessionState` can retain selected host state in session storage.
 
 ## Architecture and stack
 
@@ -27,7 +27,7 @@ Orientation and host controls sit above a rounded, inset app surface; live event
 | Distribution | ESM JavaScript, public declarations and explicit stylesheet export; React/DOM peer dependencies |
 | Build and validation | Vite 8.3.3, Vitest/Testing Library, Playwright 1.64.0; actual packed-package consumers |
 
-Registration connects a stable identity to explicit DOM members and context. Input chooses one active identity; measured geometry places outlines, pin controls, and one context panel. Each provider owns its settings, selection and event store. The log subscribes to immutable snapshots and reserves its measured region for context placement. There is no backend, telemetry, persistent storage, or required CSS framework. [Inspection rules](docs/api/inspection.md), [event APIs and lifetime semantics](docs/api/events.md), and [layout and orientation controls](docs/api/layout.md) document the exact integration contracts.
+Registration connects a stable identity to explicit DOM members and context. Input chooses one active identity; measured geometry places outlines, pin controls, and one context panel. Each provider owns its settings, selection and event store. The log subscribes to immutable snapshots and reserves its measured region for context placement. There is no backend, telemetry, or required CSS framework. Optional session storage restores explicitly selected demo state. [Inspection rules](docs/api/inspection.md), [event APIs and lifetime semantics](docs/api/events.md), and [layout and orientation controls](docs/api/layout.md) document the exact integration contracts.
 
 ## Run locally
 
@@ -55,7 +55,7 @@ Open <http://127.0.0.1:5173>. No account, API key, environment variables, or ext
 
 ![Expanded event history with independent outcomes and controls](docs/images/events-expanded.png)
 
-The expanded history fits its contents up to half the viewport and scrolls beyond that bound. Hide events in settings while work runs, then restore the log to see current retained outcomes.
+The expanded history reserves at least two rows, grows with its contents up to half the viewport, and scrolls beyond that bound. Hide events in settings while work runs, then restore the log to see current retained outcomes.
 
 On desktop, **?** ignores editable fields, held-key repeats, and composition input. Auto mobile mode uses `(hover: none) and (pointer: coarse)`; touch-capable laptops with a fine primary pointer remain desktop. Hosts can override this with `device="desktop"` or `device="mobile"`. Mobile stays active; tap circular **?** to pin. The initialization hint is visible only while the demo layer is active, within its initial four seconds plus one-second fade. Activating later does not restart it. Reduced motion removes the fade.
 
@@ -65,16 +65,16 @@ Stop the dev server with **Ctrl+C in its own terminal**. Refresh resets in-memor
 
 ## Try the package
 
-Install version 0.1.0 in an existing React project:
+Install the package locally in an existing React project and commit the updated lockfile:
 
 ```powershell
-npm install @borwood/demoable-react@0.1.0
+npm install @borwood/demoable-react
 ```
 
-The [npm version page](https://www.npmjs.com/package/@borwood/demoable-react/v/0.1.0) shows registry availability. To evaluate a checkout before a registry release, run `npm ci`, `npm run build` and `npm pack` in the source repository, then install the generated archive by its actual path:
+To build an installable archive from source, create an output directory, then run `npm ci` and `npm run pack:release -- C:/path/to/output` in the source repository. Install the generated archive by its actual path:
 
 ```powershell
-npm install C:/path/to/demoable-react/borwood-demoable-react-0.1.0.tgz
+npm install C:/path/to/output/borwood-demoable-react-0.2.0.tgz
 ```
 
 Supply matched React and React DOM versions, and import the stylesheet explicitly:
@@ -98,6 +98,8 @@ export function Demo() {
 
 `DemoLayout` handles the presentation grid; pass your own React controls through its `controls` prop. `OrientationPanel` and `EventLog` also work independently in host-selected positions. Mount `DemoLayout` or `OrientationPanel` to provide settings; the provider alone does not add a gear. `Inspectable` renders a `div`. Use [`useInspectable`](docs/api/inspection.md) for table, inline, flex/grid-sensitive or existing markup. `packageInfo` and its `PackageInfo` type remain available. There is no CommonJS export. Distributed under the [MIT license](LICENSE), Copyright (c) 2026 borwood.
 
+See [package release instructions](docs/npm-release.md) for archive verification and publication.
+
 ## Agent skills
 
 The npm package includes integration skills with API references and runnable examples. Installing the package does not automatically register a skill with your coding agent.
@@ -108,9 +110,9 @@ After installing the package above, run this from your consuming project's root:
 npx skills add ./node_modules/@borwood/demoable-react/skills/agent/integrate-demoable-react
 ```
 
-This uses Vercel's third-party [skills CLI](https://github.com/vercel-labs/skills); its current version, 1.7.1, requires Node **22.20.0 or newer**. Select your agent, such as Codex or Claude Code, and choose **Project** installation scope. The bundled agent skill supports both clients. Start a fresh agent session in that project after installation.
+This uses Vercel's third-party [skills CLI](https://github.com/vercel-labs/skills); version 1.7.2, requires Node **22.20.0 or newer**. Select your agent, such as Codex or Claude Code, and choose **Project** installation scope. The bundled agent skill supports both clients. Start a fresh agent session in that project after installation.
 
-For manual installation, discovery paths, explicit invocation, and the equivalent Claude skill, see the [integration skills guide](docs/integration-skills.md). Copy the complete skill folder, including its references and assets.
+The library supports Node 22.19 or newer. If the skills CLI requires a newer runtime than yours, use your agent's standard skill installer or follow the manual installation instructions in the [integration skills guide](docs/integration-skills.md). That guide also covers discovery paths, explicit invocation, and the equivalent Claude skill. Copy the complete skill folder, including its references and assets. Skill registration is separate from installing the application dependency.
 
 ## Verify
 
